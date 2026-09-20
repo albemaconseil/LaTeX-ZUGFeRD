@@ -1,0 +1,31 @@
+%% Copyright (C) 2026 Marei Peischl <marei@peitex.de>
+%% This file may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License, either version 1.3c of this license or (at
+%% your option) any later version: http://www.latex-project.org/lppl.txt
+%%
+%% ---------------------------------------------------------------------------
+%% Buyer data of the demo invoice (all data is fictional).
+%% Loaded in the preamble of DEMO-facture-factur-x.tex, after
+%% DEMO-facture-vendeur.tex (which provides \SirenFmt).
+%% ---------------------------------------------------------------------------
+
+\newcommand*{\BuyerName}{Client Exemple}
+\newcommand*{\BuyerAttn}{M. Alex Dupont}
+\newcommand*{\BuyerStreet}{10 rue de la Paix}
+\newcommand*{\BuyerPostcode}{75002}
+\newcommand*{\BuyerCity}{Paris}
+\newcommand*{\BuyerEmail}{comptabilite@client-exemple.example}
+\newcommand*{\BuyerSiren}{842105363}
+\newcommand*{\BuyerVAT}{FR86\BuyerSiren}
+
+\SetZUGFeRDData{
+	buyer/legal-id = {\BuyerSiren},% SIREN (schemeID 0002, set by format=facturx)
+	buyer/name = {\BuyerName},
+	buyer/postcode = {\BuyerPostcode},
+	buyer/city = {\BuyerCity},
+	buyer/country = FR,
+	buyer/address = {\BuyerAttn\\\BuyerStreet},
+	buyer/vatid = {\BuyerVAT},
+	buyer/email = {\BuyerEmail},
+}
+\endinput

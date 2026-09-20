@@ -1,0 +1,112 @@
+%% Copyright (C) 2026 Marei Peischl <marei@peitex.de>
+%% This file may be distributed and/or modified under the conditions of the
+%% LaTeX Project Public License, either version 1.3c of this license or (at
+%% your option) any later version: http://www.latex-project.org/lppl.txt
+%%
+%% ---------------------------------------------------------------------------
+%% Seller data of the demo invoice (all data is fictional).
+%% Loaded in the preamble of DEMO-facture-factur-x.tex, after zugferd-invoice
+%% and scrlayer-scrpage and after \pagestyle{scrheadings}. It provides
+%%   - the macros \Seller... and \Bank... (entered only once),
+%%   - the seller and payment data for the Factur-X XML (\SetZUGFeRDData),
+%%   - the legal notices (\PrintMentionsLegales and the coded notes AAB, PMD, PMT),
+%%   - the page footer,
+%%   - \PrintRIB: bank details table printed in the invoice.
+%% ---------------------------------------------------------------------------
+
+% --- Company
+\newcommand*{\SellerName}{Exemple Conseil}
+\newcommand*{\SellerStreet}{12, rue des Tilleuls}
+\newcommand*{\SellerPostcode}{75011}
+\newcommand*{\SellerCity}{Paris}
+\newcommand*{\SellerCapital}{3000}
+\newcommand*{\SellerRCSCity}{Paris}
+\newcommand*{\SellerNAF}{6202A}
+\newcommand*{\SellerSiren}{912345675}
+\newcommand*{\SellerVAT}{FR65\SellerSiren}
+% --- Contacts
+\newcommand*{\SellerContactName}{Camille Martin}
+\newcommand*{\SellerMobile}{+33 6 12 34 56 78}
+\newcommand*{\SellerEmail}{camille.martin@exemple-conseil.example}
+\newcommand*{\SellerPhone}{+33(0)1 23 45 67 89}
+\newcommand*{\SellerWeb}{www.exemple-conseil.example}
+\newcommand*{\SellerContactEmail}{contact@exemple-conseil.example}
+% --- Bank (the printed bank details are derived from the IBAN without spaces)
+\newcommand*{\BankIBAN}{FR7612345012340001234567822}
+\newcommand*{\BankBIC}{EXPLFRPPXXX}
+\newcommand*{\BankName}{BANQUE EXEMPLE ILE-DE-FRANCE}
+\newcommand*{\BankAddressOne}{Centre commercial des Arcades}
+\newcommand*{\BankAddressTwo}{75009 Paris}
+
+% --- Legal notices (articles L441-10 and D441-5 of the French Code de commerce)
+% No ~ or special symbols: the texts are also written to the XML (notes AAB, PMD, PMT)
+\newcommand*{\MentionEscompte}{Pas d'escompte pour paiement anticipé.}
+\newcommand*{\MentionPenalites}{Pénalités de retard : 3 fois le taux d'intérêt légal.}
+\newcommand*{\MentionIndemnite}{Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 euros.}
+
+% --- Helpers: split the IBAN, format the SIREN
+\ExplSyntaxOn
+\NewExpandableDocumentCommand{\StrRange}{mmm}{\exp_args:Nf\str_range:nnn{#1}{#2}{#3}}
+\ExplSyntaxOff
+\newcommand*{\IBANspaced}[1]{%
+	\StrRange{#1}{1}{4} \StrRange{#1}{5}{8} \StrRange{#1}{9}{12} \StrRange{#1}{13}{16} %
+	\StrRange{#1}{17}{20} \StrRange{#1}{21}{24} \StrRange{#1}{25}{27}}
+\newcommand*{\RIBBanque}{\StrRange{\BankIBAN}{5}{9}}
+\newcommand*{\RIBGuichet}{\StrRange{\BankIBAN}{10}{14}}
+\newcommand*{\RIBCompte}{\StrRange{\BankIBAN}{15}{25}}
+\newcommand*{\RIBCle}{\StrRange{\BankIBAN}{26}{27}}
+% ordinary spaces (no ~): also used in the XML
+\def\SirenFmt#1#2#3#4#5#6#7#8#9{#1#2#3 #4#5#6 #7#8#9}
+\newcommand*{\SellerSirenSpaced}{\expandafter\SirenFmt\SellerSiren}
+
+% --- Seller and payment data for the Factur-X XML
+\SetZUGFeRDData{
+	seller/name = {\SellerName},
+	seller/postcode = {\SellerPostcode},
+	seller/city = {\SellerCity},
+	seller/country = FR,
+	seller/address = {\SellerStreet},
+	seller/vatid = {\SellerVAT},
+	seller/legal-id = {\SellerSiren},% SIREN (schemeID 0002, set by format=facturx)
+	seller/contact = {\SellerContactName\\\SellerMobile\\\SellerEmail},
+	seller/email = {\SellerEmail},
+	note-AAB = {\MentionEscompte},% discount conditions
+	note-PMD = {\MentionPenalites},% late payment penalties
+	note-PMT = {\MentionIndemnite},% fixed recovery fee
+	payment-means / type = 58, % SEPA credit transfer
+	payment-means / iban = {\BankIBAN},% without spaces in the XML
+	payment-means / account-holder = {\SellerName},
+	payment-means / bic = {\BankBIC},
+}
+
+% --- Page footer
+\cfoot{\small
+	\SellerName, SARL au capital de \SellerCapital{} € ~--~ \SellerStreet{} - \SellerPostcode{} \SellerCity\newline
+	Téléphone : \SellerPhone{} ~--~ Site web : \SellerWeb{} ~--~ E-mail : \SellerContactEmail\newline
+	RCS \SellerRCSCity{} \SellerSirenSpaced{} ~--~ NAF \SellerNAF{} ~--~ TVA intracommunautaire : \SellerVAT\par
+	\makebox[\linewidth][r]{\tiny Facture électronique Factur-X (profil EN 16931) générée avec La\TeX.}
+}
+
+% --- Legal notices printed on the invoice (same texts as in the XML)
+\newcommand*{\PrintMentionsLegales}{%
+	{\scriptsize
+		\MentionEscompte{} \MentionPenalites{} \MentionIndemnite\par}}
+
+% --- Bank details table
+\newcommand*{\PrintRIB}{%
+	\begin{center}
+		\begin{tabular}{|c c c c|}
+			\hline \textbf{Code banque} & \textbf{Code guichet} & \textbf{N° de compte} & \textbf{Clé RIB} \\
+			\RIBBanque & \RIBGuichet & \RIBCompte & \RIBCle \\
+			\hline \multicolumn{2}{|c|}{\textbf{Domiciliation}} & \multicolumn{2}{|c|}{\textbf{Code BIC}} \\
+			\multicolumn{2}{|l|}{\BankName} & \multicolumn{2}{|c|}{ \textbf{/SWIFT} } \\
+			\multicolumn{2}{|l|}{\BankAddressOne} & \multicolumn{2}{|l|}{ \BankBIC } \\
+			\multicolumn{2}{|l|}{\BankAddressTwo} & \multicolumn{2}{|l|}{ } \\
+			\hline \textbf{IBAN N°} & \multicolumn{3}{|l|}{ \IBANspaced{\BankIBAN} } \\
+			\hline \textbf{Compte} & \multicolumn{3}{|l|}{ \SellerName} \\
+			& \multicolumn{3}{|l|}{ \SellerStreet} \\
+			& \multicolumn{3}{|l|}{ \SellerPostcode{} \SellerCity} \\
+			\hline
+		\end{tabular}
+	\end{center}}
+\endinput

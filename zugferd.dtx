@@ -380,7 +380,7 @@
 % \begin{implementation}
 % \section{Implementation}
 % \changes{v0.11}{2025-12-28}{Move definition of globa temporary tl}
-% \begin{variable}{\l_@@_tmp_tl,\g_@@_tmp_tl,\g_@@_format_str,\g_@@_businessProcessId_str,\g_@@_writeTradeContact_bool,\g_@@_writePaymentMeans_bool,\g_@@_minimum_bool,\g_@@_conformance_level_str,\g_@@_xml_embedded_file_tl}
+% \begin{variable}{\l_@@_tmp_tl,\g_@@_tmp_tl,\g_@@_format_str,\g_@@_businessProcessId_str,\g_@@_writeTradeContact_bool,\g_@@_writePaymentMeans_bool,\g_@@_minimum_bool,\g_@@_facturx_bool,\g_@@_legal_scheme_tl,\g_@@_conformance_level_str,\g_@@_xml_embedded_file_tl}
 %    \begin{macrocode}
 \tl_new:N \l_@@_tmp_tl
 \tl_new:N \g_@@_tmp_tl
@@ -389,6 +389,9 @@
 \bool_new:N \g_@@_writeTradeContact_bool
 \bool_new:N \g_@@_writePaymentMeans_bool
 \bool_new:N \g_@@_minimum_bool
+\bool_new:N \g_@@_facturx_bool
+\tl_new:N \g_@@_legal_scheme_tl
+\tl_gset:Nn \g_@@_legal_scheme_tl {0088}
 \str_new:N \g_@@_conformance_level_str
 \tl_new:N \g_@@_xml_embedded_file_tl
 %    \end{macrocode}
@@ -401,13 +404,25 @@
 %
 % \DescribeKeyOption{format=xrechnung/xrechnung3.0/xrechnung2.3/basic/minimum}{xrechnung}
 % \option{format} selects the scheme to be used for the zugferd invoice.
-% Currently xrechnung3.0, xrechnung2.3, and the basic and minimum schemes are supported.
+% Currently xrechnung3.0, xrechnung2.3, en16931, and the basic and minimum schemes are supported.
 %
 % The value \option{xrechnung} is set as an alias to |xrechnung3.0| and will always use the latest version supported by \pkg{zugferd}.
 %
 % This option also adjusts the file name which is used for embedding the \XML.
 % It will be called |factur-x.xml| for all formats but the |xrechnung| ones.
 % In that case it will be |xrechnung.xml|.
+%
+% \changes{v0.14}{2026-09-20}{Add format=en16931 (alias facturx) for Factur-X invoices using the EN~16931 profile}
+% The value \option{en16931} selects the Factur-X profile \enquote{EN 16931}, which is used for invoices in France.
+% \option{facturx} is an alias for it.
+% Compared to the |xrechnung| formats this
+% \begin{itemize}
+% \item does not write the Peppol business process (see \option{business-process}),
+% \item uses the scheme |0002| (SIREN) for legal identifiers (see \option{legal-scheme}),
+% \item does not write an empty \option{buyer/reference}, as this is only mandatory for XRechnung, and
+% \item writes the same payment means details as |xrechnung|.
+% \end{itemize}
+% All other formats are not affected by this setting.
 %
 % \DescribeKeyOption{zugferd=\meta{boolean}}{true}*
 % This option can be used to deactivate the \XML embedding.
@@ -457,6 +472,19 @@
 		}
 		\keys_set:nn {zugferd}{xrechnung}
 	},
+	format / en16931 .code:n = {
+		\str_gset:Nx \g_@@_format_str {
+			urn:cen.eu:en16931:2017
+		}
+		\str_gclear:N \g_@@_businessProcessId_str
+		\bool_gset_true:N \g_@@_facturx_bool
+		\bool_gset_true:N \g_@@_writeTradeContact_bool
+		\bool_gset_true:N \g_@@_writePaymentMeans_bool
+		\tl_gset:Nn \g_@@_legal_scheme_tl {0002}
+		\str_gset:Nn \g_@@_conformance_level_str {EN~16931}
+		\tl_gset:Nn \g_@@_xml_embedded_file_tl {factur-x.xml}
+	},
+	format / facturx .meta:n = { format = en16931 },
 	format / basic .code:n = {
 		\str_gset:Nx \g_@@_format_str {
 			urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic
@@ -1658,9 +1686,10 @@
 %
 % \end{documentation}
 % \begin{implementation}
-% \begin{variable}{\g_@@_notes_seq,\g_@@_id_tl,\g_@@_date_tl,\g_@@_subject_tl,\g_@@_fromaddress_tl,\g_@@_DocumentTypeCode_tl}
+% \begin{variable}{\g_@@_notes_seq,\g_@@_coded_notes_prop,\g_@@_id_tl,\g_@@_date_tl,\g_@@_subject_tl,\g_@@_fromaddress_tl,\g_@@_DocumentTypeCode_tl}
 %    \begin{macrocode}
 \seq_new:N \g_@@_notes_seq
+\prop_new:N \g_@@_coded_notes_prop
 \tl_new:N \g_@@_id_tl
 \tl_new:N \g_@@_date_tl
 \tl_new:N \g_@@_delivery_date_tl
@@ -1849,6 +1878,27 @@
 % \end{optionenv}
 % \end{implementation}
 % \begin{documentation}
+% \subsubsection{Business process and legal identifier scheme}
+% \changes{v0.14}{2026-09-20}{Add business-process and legal-scheme}
+% \DescribeKeyOption[BT-23]{business-process=\meta{string}}{}*
+% Sets the business process identifier.
+% The |xrechnung3.0| format sets the value required by the Peppol specification.
+% The |en16931| format does not set a value, as it is not required by the Factur-X profile.
+% The French e-invoicing frameworks might require a value like |S1| (services) here.
+%
+% \DescribeKeyOption{legal-scheme=\meta{ICD code}}{0088}*
+% Scheme identifier used for the legal registration identifier (|seller/legal-id| and |buyer/legal-id|).
+% The default is |0088|, but |format=en16931| sets it to |0002| (SIREN).
+% \end{documentation}
+% \begin{implementation}
+% \begin{optionenv}{business-process,legal-scheme}
+%    \begin{macrocode}
+	business-process .str_gset:N = \g_@@_businessProcessId_str,
+	legal-scheme .tl_gset:N = \g_@@_legal_scheme_tl,
+%    \end{macrocode}
+% \end{optionenv}
+% \end{implementation}
+% \begin{documentation}
 % \subsubsection{Allowances and Charges}
 % \changes{v0.10}{2025-09-08}{add the options add-charge and add-allowance.}
 % \DescribeKeyOption[BT-92,BT-93,BT-94,BT-97,BT-98]{add-allowance=\marg{keyval-list}}{}
@@ -1925,9 +1975,20 @@
 % The value \value{komavar} corresponds to the mechanism provided by \pkg{scrletter}.
 % It accesses the variable expands it to be used directly.
 % If you don't use this package, you can ignore this setting or add content manually.
+%
+% \changes{v0.14}{2026-09-20}{Add note-PMD, note-PMT and note-AAB}
+% \DescribeKeyOption[BT-21/22]{note-PMD=\meta{Tokenlist}}{}*
+% \DescribeKeyOption[BT-21/22]{note-PMT=\meta{Tokenlist}}{}*
+% \DescribeKeyOption[BT-21/22]{note-AAB=\meta{Tokenlist}}{}*
+% French law requires some legal notes on invoices which have to be transmitted with a subject code in the \XML.
+% \option{note-PMD} is used for the late payment penalties,
+% \option{note-PMT} for the fixed indemnity for recovery costs,
+% and \option{note-AAB} for the discount conditions.
+% In contrast to \option{add-note} the content is written with the corresponding |SubjectCode|.
+% These notes are not written if \option{format=minimum} is used.
 % \end{documentation}
 % \begin{implementation}
-% \begin{optionenv}{subject,fromaddress,add-note}
+% \begin{optionenv}{subject,fromaddress,add-note,note-PMD,note-PMT,note-AAB}
 %    \begin{macrocode}
 	subject .choice:,
 	subject / komavar .code:n = {
@@ -1939,6 +2000,9 @@
 		{\scr@fromaddress@var},
 	fromaddress / unknown .code:n = \tl_gset:Nn \g_@@_fromaddress_tl {#1},
 	add-note .code:n = \seq_gput_right:Nn \g_@@_notes_seq {#1},
+	note-PMD .code:n = \prop_gput:Nnn \g_@@_coded_notes_prop {PMD} {#1},
+	note-PMT .code:n = \prop_gput:Nnn \g_@@_coded_notes_prop {PMT} {#1},
+	note-AAB .code:n = \prop_gput:Nnn \g_@@_coded_notes_prop {AAB} {#1},
 }
 \msg_new:nnnn {zugferd} {unknown-value} {
 	You~selected~a~#1~which~was~not~predefined.\\
@@ -2192,7 +2256,7 @@
 	\_@@_xml_newline_indent:
 		<ram:SpecifiedLegalOrganization>
 	%%%<!-- seller BT-30 | buyer BT-47 -->
-	\_@@_write_inline_i:nnn {ram:ID} {~schemeID="0088"} {#4}
+	\_@@_write_inline_i:nnn {ram:ID} {~schemeID="\g_@@_legal_scheme_tl"} {#4}
 	%%<!-- seller BT-28 | buyer BT-45 -->
 	\_@@_write_inline_i:nn {ram:TradingBusinessName} {#5}
 	\_@@_xml_newline_indent:
@@ -2281,8 +2345,9 @@
 		{\tl_if_blank_p:V \g_@@_buyer_reference_tl}
 %    \end{macrocode}
 % \changes{v0.11}{2026-05-25}{BASIC does no longer require the buyer-reference}
+% \changes{v0.14}{2026-09-20}{format=en16931 does not require the buyer-reference}
 %    \begin{macrocode}
-		{ \g_@@_minimum_bool  || \str_if_eq_p:Vn \g_@@_conformance_level_str {BASIC} }
+		{ \g_@@_minimum_bool  || \g_@@_facturx_bool || \str_if_eq_p:Vn \g_@@_conformance_level_str {BASIC} }
 	{
 		\_@@_write_xml:e {
 			<ram:BuyerReference>\g_@@_buyer_reference_tl</ram:BuyerReference>
@@ -2987,7 +3052,19 @@
 %
 \bool_if:NTF \g_@@_minimum_bool {%
 	\cs_set_eq:NN \_@@_write_note:n \use_none:n%
+	\cs_set_eq:NN \_@@_write_coded_note:nn \use_none:nn%
 } {%
+	\_@@_define_xml_writer:Nn \_@@_write_coded_note:nn {%
+		\begingroup%
+			\let\\\iow_newline:%
+			\_@@_write_xml:e {%
+				<ram:IncludedNote>
+					\_@@_indent: <ram:Content>#2</ram:Content>
+					\_@@_indent: <ram:SubjectCode>#1</ram:SubjectCode>
+				</ram:IncludedNote>%
+			}%
+		\endgroup%
+	}%
 	\_@@_define_xml_writer:Nn \_@@_write_note:n {%
 		\begingroup%
 			\let\\\iow_newline:%
@@ -3044,6 +3121,9 @@
 	\_@@_note_if_not_empty:N \g_@@_fromaddress_tl%
 	\seq_map_inline:Nn \g_@@_notes_seq {%
 		\_@@_write_note:n {##1}%
+	}%
+	\prop_map_inline:Nn \g_@@_coded_notes_prop {%
+		\_@@_write_coded_note:nn {##1} {##2}%
 	}%
 	\int_gdecr:N \g_@@_indent_int%
 	\_@@_write_xml:e {%
@@ -3411,7 +3491,7 @@
 			\int_gincr:N \g_@@_indent_int%
 			\_@@_write_xml:e {%
 				<ram:TypeCode>\g_@@_payment_means_tl</ram:TypeCode>%
-				\str_if_eq:VnT \g_@@_conformance_level_str {XRECHNUNG} {%
+				\bool_if:nT { \str_if_eq_p:Vn \g_@@_conformance_level_str {XRECHNUNG} || \g_@@_facturx_bool } {%
 					\_@@_write_inline:ne {ram:Information} {%
 						\prop_item:cV {g_@@_payment-means_names_prop} \g_@@_payment_means_tl%
 					}%
@@ -3419,12 +3499,12 @@
 				\tl_if_blank:nF {#1#2} {
 					<ram:PayeePartyCreditorFinancialAccount>%
 					\_@@_write_inline_i:nn {ram:IBANID} {#2}%
-					\str_if_eq:VnT \g_@@_conformance_level_str {XRECHNUNG} {%
+					\bool_if:nT { \str_if_eq_p:Vn \g_@@_conformance_level_str {XRECHNUNG} || \g_@@_facturx_bool } {%
 						\_@@_write_inline_i:nn {ram:AccountName} {#1}
 					}%
 					</ram:PayeePartyCreditorFinancialAccount>%
 				}%
-				\str_if_eq:VnT \g_@@_conformance_level_str {XRECHNUNG} {%
+				\bool_if:nT { \str_if_eq_p:Vn \g_@@_conformance_level_str {XRECHNUNG} || \g_@@_facturx_bool } {%
 					\tl_if_blank:nF {#3} {%
 						<ram:PayeeSpecifiedCreditorFinancialInstitution>%
 						\_@@_write_inline_i:nn {ram:BICID} {#3}

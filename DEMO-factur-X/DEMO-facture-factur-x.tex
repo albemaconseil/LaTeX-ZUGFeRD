@@ -1,0 +1,156 @@
+% !TeX Program=pdflatex
+%
+% Demo file for the LaTeX-ZUGFeRD project
+% French invoice in the Factur-X format (profile EN 16931).
+% Uses format=facturx, which is an alias for format=en16931.
+%
+% Copyright (C) 2026 Marei Peischl <marei@peitex.de>
+% ---------------------------------------------------------
+%
+% This file may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3c
+% of this license or (at your option) any later version.
+% The latest version of this license is in:
+%
+%    http://www.latex-project.org/lppl.txt
+%
+% and version 1.3c or later is part of all distributions of LaTeX
+% version 2008-05-04 or later.
+%
+% All data (companies, persons, IBAN, ...) is fictional.
+% The seller data (including the footer and the bank details) is kept in
+% DEMO-facture-vendeur.tex, the buyer data in DEMO-facture-acheteur.tex.
+%
+% PDF/A-3b metadata. \DocumentMetadata needs a current LaTeX distribution and
+% has to be the very first command of the file.
+\DocumentMetadata{
+	pdfversion=1.7, % necessary as it would be 2.0 by default for the current release
+	pdfstandard=a-3b,
+	lang=fr,
+}
+% The other demo files load the pdfmanagement directly instead, which needs
+% a pdfmanagement.sty in your distribution:
+% \RequirePackage{pdfmanagement}
+% \SetKeys[document/metadata]{pdfversion=1.7, pdfstandard=a-3b, lang=fr}
+\documentclass[french,11pt]{scrartcl}
+
+% The column titles and the VAT name of the demo implementation are defined
+% with \providecommand, so they can be adjusted before loading the package.
+\newcommand*\InvoiceTabularPosition{Pos.}
+\newcommand*\InvoiceTabularAmount{Quantité}
+\newcommand*\InvoiceTabularDescription{Désignation}
+\newcommand*\InvoiceTabularUnitPrice{Prix unitaire}
+\newcommand*\InvoiceTabularLineTotal{Montant}
+\newcommand*\InvoiceVATName{TVA}
+
+\usepackage[
+	format=facturx,% alias for format=en16931
+	default-vat=20
+]{zugferd-invoice}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper]{geometry}
+\usepackage{xcolor}
+\usepackage{scrlayer-scrpage}
+
+% PDF/A-3 requires a MIME type (/Subtype) for every embedded file. Make sure it
+% is set for .xml, otherwise validators may reject the embedded factur-x.xml.
+\ExplSyntaxOn
+\prop_gput:Nnn \g_pdffile_mimetypes_prop {.xml}{text/xml}
+\ExplSyntaxOff
+
+% French number format (decimal comma) for all amounts.
+% (zugferd-invoice only sets the locale for German documents.)
+\sisetup{locale=FR}
+\renewcommand*{\invoicesumnettoname}{Total HT}
+\renewcommand*{\invoicesumbruttoname}{Total TTC}
+% The demo implementation only knows the VAT rates 19 and 7 by default.
+\InitVAT{20}
+
+% Count the elements of a comma separated list (number of days worked)
+\ExplSyntaxOn
+\NewExpandableDocumentCommand{\CountList}{m}{\clist_count:N #1}
+\ExplSyntaxOff
+
+\def\FactureMonth        {avril}
+\def\FactureFromMonth    {d'avril}
+\def\FactureMonthLastDay {30}
+\def\FactureMonthNumber  {04}
+\def\FactureYearNumber   {26}
+\def\FactureYear         {20\FactureYearNumber}
+\def\FactureDaysDetails  {1, 2, 7, 8, 9, 13, 14, 15, 16, 20, 21, 22, 27, 28, 29}
+\edef\FactureDays{\CountList{\FactureDaysDetails}}% number of days = length of the list
+\def\FactureAmountPerDay {480}
+
+\def\FactureNum      {\FactureYearNumber-00\FactureMonthNumber}% invoice number
+\def\FactureDate     {\FactureMonthLastDay~\FactureMonth~\FactureYear}% printed date
+\def\FactureDateYMD  {\FactureYear\FactureMonthNumber\FactureMonthLastDay}% date as YYYYMMDD
+
+\SetZUGFeRDData{
+%	document-type = commercial-invoice, % commented as this setting matches the initial value
+	id=\FactureNum,
+	date=\FactureDateYMD,
+	delivery-date=\FactureDateYMD,
+	unit=day,
+	currency=€,
+	payment-terms={Payable dans les 30 jours},% either this one or the due-date is required
+	% due-date={20260530},
+	start-date=\FactureYear\FactureMonthNumber01,% invoicing period: first to last day of the month
+	end-date=\FactureDateYMD,
+	business-process=S1,% invoicing framework: services. Check the value with your platform.
+}
+
+% Do not use ~ in the description: this text is also written to the XML as it is.
+\AddInvoiceItem<unit=DAY>{\FactureDays}{Développements \FactureMonth\space\FactureYear}{\FactureAmountPerDay}
+
+\setlength{\parindent}{0pt}
+\geometry{verbose,tmargin=4em,bmargin=9em,lmargin=6em,rmargin=6em}
+\setlength{\parskip}{1ex plus 0.5ex minus 0.2ex}
+
+\pagestyle{scrheadings}
+\clearpairofpagestyles
+% Seller data, footer and bank details (\PrintRIB)
+\input{DEMO-facture-vendeur.tex}
+% Buyer data
+\input{DEMO-facture-acheteur.tex}
+
+\begin{document}
+
+\begin{minipage}{0.3\textwidth}
+	{\LARGE \SellerName} \\
+	\SellerStreet \\
+	\SellerPostcode{} \SellerCity
+\end{minipage}
+\begin{minipage}{0.6\textwidth}
+	\begin{center}
+		\textcolor[gray]{.5}{\Huge Facture}
+	\end{center}
+\end{minipage}
+
+\vspace{0.5cm}
+Facture n°\FactureNum
+
+{\addtolength{\leftskip}{9.5cm}
+	\InsertZUGFeRDData[AddressData]{buyer}
+}
+
+\hspace*{9.5cm}
+\UseZUGFeRDAddressItem{seller}{city}, le \FactureDate
+
+~\\~\\
+
+\textbf{Objet : Prestation en régie}
+
+Catégorie d'opération : prestation de services.
+
+La prestation s'étend sur~\FactureDays~jours pendant le mois \FactureFromMonth~\FactureYear{}
+(\FactureDaysDetails~\FactureMonth).
+
+\PrintInvoiceTabular
+
+\PrintMentionsLegales
+
+En votre aimable règlement par chèque ou virement à réception de facture (30 jours maximum)~:
+
+\PrintRIB
+
+\end{document}

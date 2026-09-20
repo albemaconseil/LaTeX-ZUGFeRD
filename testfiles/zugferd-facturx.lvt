@@ -1,0 +1,52 @@
+\input regression-test.tex\relax
+\documentclass{article}
+
+\usepackage[zugferd=false,format=facturx]{zugferd}
+
+\SetZUGFeRDData{
+	id=1337,
+	unit=hour,
+	tax/category=S,
+	business-process=S1,
+	note-AAB = {No discount for early payment.},
+	note-PMD = {Late payment penalty: 3 times the legal interest rate.},
+	note-PMT = {Fixed recovery fee for late payment: 40 euros.},
+	seller/name = {Nortelis},
+	seller/legal-id = {912345675},
+	seller/country = FR,
+	seller/vatid = {FR65912345675},
+	seller/contact = {Julien Morel\\+33 6 39 98 12 34\\julien.morel@nortelis.example},
+	buyer/name = {Cobaltis},
+	buyer/legal-id = {842105363},
+	buyer/country = FR,
+	due-date={20240118},
+	payment-means / type = 58,
+	payment-means / iban = FR7612345012340001234567822,
+	payment-means / account-holder = {Nortelis},
+	payment-means / bic = EXPLFRPPXXX,
+}
+
+\begin{document}
+\ExplSyntaxOn
+ 	\begin{ZUGFeRD}
+	\zugferd_write_Item:nnnnnn  {1} {} {Plushie ~ \TeX\ lion} {31.89} {2} {63.78}%special requied for space in expl3-mode
+	\zugferd_startInvoiceSums:
+	\zugferd_write_TaxEntry:nnnn {S} {19} {63.78} {12.12}
+	\zugferd_write_Summation:nnnnnnnn
+		{63.78}% LineTotalAmount
+		{0} %ChargeTotalAmount
+		{0} %AllowanceTotalAmount
+		{63.78} %TaxBasisTotalAmount
+		{12.12} %TaxTotalAmount
+		{75.90} %GrandTotalAmount
+		{0} % TotalPrepaidAmount
+		{75.90} %DuePayableAmount = GrandTotalAmount - TotalPrepaidAmount
+	\zugferd_stopInvoiceSums:
+ \end{ZUGFeRD}
+\endlinechar=10
+\char_set_catcode:nn {10}{12}%
+\START%
+\SHOWFILE{\jobname _zugferd.xml}%
+\END%
+\ExplSyntaxOff%
+\end{document}%
