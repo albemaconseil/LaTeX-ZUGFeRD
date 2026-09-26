@@ -1,4 +1,4 @@
-% !TeX Program=pdflatex
+% !TeX Program=lualatex
 %
 % Demo file for the LaTeX-ZUGFeRD project
 % French invoice in the Factur-X format (profile EN 16931).
@@ -47,7 +47,7 @@
 	format=facturx,% alias for format=en16931
 	default-vat=20
 ]{zugferd-invoice}
-\usepackage[T1]{fontenc}
+\usepackage{fontspec}
 \usepackage[a4paper]{geometry}
 \usepackage{xcolor}
 \usepackage{scrlayer-scrpage}
@@ -91,7 +91,7 @@
 	date=\FactureDateYMD,
 	delivery-date=\FactureDateYMD,
 	unit=day,
-	currency=€,
+	currency=EUR,
 	payment-terms={Payable dans les 30 jours},% either this one or the due-date is required
 	% due-date={20260530},
 	start-date=\FactureYear\FactureMonthNumber01,% invoicing period: first to last day of the month
